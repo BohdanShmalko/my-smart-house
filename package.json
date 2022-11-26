@@ -1,0 +1,31 @@
+{
+  "name": "my-smart-house",
+  "version": "1.0.0",
+  "description": "",
+  "main": "./src/main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start:dev": "nodemon main.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BohdanShmalko/my-smart-house.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/BohdanShmalko/my-smart-house/issues"
+  },
+  "homepage": "https://github.com/BohdanShmalko/my-smart-house#readme",
+  "dependencies": {
+    "body-parser": "^1.20.1",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "moment": "^2.29.4",
+    "mongoose": "^6.7.3",
+    "mqtt": "^4.3.7"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.20"
+  }
+}
