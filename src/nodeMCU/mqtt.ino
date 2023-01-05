@@ -22,6 +22,10 @@ unsigned long lastMsg = 0;
 #define MSG_BUFFER_SIZE (500)
 char msg[MSG_BUFFER_SIZE];
 int value = 0;
+int D7Pin = 13; //fitolamp
+int D2Pin = 4; //pump
+int D5Pin = 14; // gigrometr
+int analogPin = A0;
 
 void setup_wifi() {
   delay(10);
@@ -68,23 +72,25 @@ void setDateTime() {
 
 
 void callback(char* topic, byte* payload, unsigned int length) {
-  Serial.print("Message arrived [");
-  Serial.print(topic);
-  Serial.print("] ");
+  //Serial.print("Message arrived [");
+  //Serial.print(topic);
+  //Serial.print("] ");
+  String data = "";
   for (int i = 0; i < length; i++) {
-    Serial.print((char)payload[i]);
+    data += String((char)payload[i]);
   }
-  Serial.println();
-
-  // Switch on the LED if the first character is present
-  if ((char)payload[0] != NULL) {
-    digitalWrite(LED_BUILTIN, LOW); // Turn the LED on (Note that LOW is the voltage level
-    // but actually the LED is on; this is because
-    // it is active low on the ESP-01)
-    delay(500);
-    digitalWrite(LED_BUILTIN, HIGH); // Turn the LED off by making the voltage HIGH
-  } else {
-    digitalWrite(LED_BUILTIN, HIGH); // Turn the LED off by making the voltage HIGH
+  //Serial.println(data);
+  //Serial.println(data);
+  if(String(topic) == "pomp") {
+    digitalWrite(D7Pin, LOW);
+    delay(5000);
+    digitalWrite(D7Pin, HIGH);
+  } else if(String(topic) == "fitolamp") {
+    if(data == "1") {
+      digitalWrite(D2Pin, LOW);
+    } else if (data == "0") {
+      digitalWrite(D2Pin, HIGH);
+    }
   }
 }
 
@@ -99,9 +105,10 @@ void reconnect() {
     if (client->connect(clientId.c_str(), "nodeMCUclient", "12345678")) {
       Serial.println("connected");
       // Once connected, publish an announcement…
-      client->publish("light", "hello world");
+      // client->publish("light", "hello world");
       // … and resubscribe
-      // client->subscribe("light");
+      client->subscribe("pomp");
+      client->subscribe("fitolamp");
     } else {
       Serial.print("failed, rc = ");
       Serial.print(client->state());
@@ -111,7 +118,6 @@ void reconnect() {
     }
   }
 }
-
 
 void setup() {
   delay(500);
@@ -124,6 +130,12 @@ void setup() {
   setDateTime();
 
   pinMode(LED_BUILTIN, OUTPUT); // Initialize the LED_BUILTIN pin as an output
+  pinMode(D2Pin, OUTPUT);
+  pinMode(D7Pin, OUTPUT);
+  pinMode(D5Pin, OUTPUT);
+  digitalWrite(D2Pin, HIGH);
+  digitalWrite(D7Pin, HIGH);
+  digitalWrite(D5Pin, LOW);
 
   // you can use the insecure mode, when you want to avoid the certificates
   //espclient->setInsecure();
@@ -152,12 +164,19 @@ void loop() {
   client->loop();
 
   unsigned long now = millis();
-  if (now - lastMsg > 60000) {
+  if (now - lastMsg > 59000) {
+    digitalWrite(D5Pin, HIGH);
+    delay(1000);
+    int gigrometrValue = analogRead(analogPin);
+    digitalWrite(D5Pin, LOW);
+    int gigrometrPercent = map(gigrometrValue, 0, 1023, 50, 0) * 2;
     lastMsg = now;
     ++value;
     snprintf (msg, MSG_BUFFER_SIZE, "%ld", value);
-    Serial.print("Publish message: ");
-    Serial.println(msg);
+    //Serial.print("Publish message: ");
+    //Serial.println(String(gigrometrPercent));
     client->publish("light", msg);
+    snprintf (msg, MSG_BUFFER_SIZE, "%ld", gigrometrPercent);
+    client->publish("gigrometr", msg);
   }
 }

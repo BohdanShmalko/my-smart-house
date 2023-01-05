@@ -29,7 +29,7 @@ module.exports = {
 
     listen: (callback, errorCallback) => {
         startMqtt();
-
+        
         client.on('connect', () => {
             if(callback) callback();
         });

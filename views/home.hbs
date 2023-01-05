@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Smart home</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-iYQeCzEYFbKjA/T2uDLTpkwGzCiq6soy8tYaI1GyVh/UjpbCx/TYkiZhlZB6+fzT" crossorigin="anonymous">  
+    <style>
+        .error {
+            color:red;
+        }
+
+        .lightBlock {
+            border: 1px solid black;
+        }
+
+        .gigrometrBlock {
+            border: 1px solid black;
+        }
+    </style>
+</head>
+<body>
+    <div class="lightBlock">
+        <div id="lastLightTime"></div>
+        <div id="systemStartFrom"></div>
+        <div id="top10LightStart"></div>
+        <div id="lastUpdatingLight"></div>
+    </div>
+    <div id="fitolampSwitch" class="form-check form-switch"></div>
+    <div class="gigrometrBlock">
+        <div id="mongoGigrometrLastData"></div>
+        <div id="lastMongoGigrometrTime"></div>
+        <div id="mongoGigrometrLastUpdate"></div>
+    </div>
+    <div><button id="pompMangoButton" onClick="startPopm()">Полити манго</button></div>
+    <div id="commonError" class="error"></div>
+</body>
+<script>
+    //render
+    const renderHtml = ({id, html, time}) => {
+        const element = document.getElementById(id);
+        element.innerHTML = html;
+        if(!time) return;
+        setTimeout(() => {
+            element.innerHTML = '';
+        }, time);
+    }
+
+    const renderFitolampCheckbox = () => {
+        renderHtml({ id:'fitolampSwitch', html: `
+            <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckCheckedFitolamp" ${state.fitolampCheck ? 'checked' : ''} onClick="changeFitolampStatus()">
+            <label class="form-check-label" for="flexSwitchCheckCheckedFitolamp">Фітолампа</label>
+        ` });
+    }
+
+    const renderError = () => {
+        renderHtml({ 
+            id: `commonError`,
+            html: 'Щось пішло не так',
+            time: 3000,
+        });
+    }
+
+    const renderLastTime = () => {
+        renderHtml({ id:'lastLightTime', html: `Останній раз система працювала о ${state.lastLightTime}`});
+        renderHtml({ id:'systemStartFrom', html: `Система розпочала роботу з ${state.systemStartFrom}`});
+        renderHtml({ id:'top10LightStart', html: `Останні рази початку роботи системи ${state.top10LightStart}`});
+        renderHtml({ id:'lastUpdatingLight', html: `Останній раз оновлення даних про роботу системи: ${state.lastUpdatingLight}`});
+    }
+
+    const renderGigrometrData = () => {
+        renderHtml({ id:'mongoGigrometrLastData', html: `Останні дані гігрометра манго: ${state.mongoGigrometrLastData}`});
+        renderHtml({ id:'lastMongoGigrometrTime', html: `Останній раз отримання даних від гігрометра манго: ${state.lastMongoGigrometrTime}`});
+        renderHtml({ id:'mongoGigrometrLastUpdate', html: `Останній раз оновлення даних гігрометра манго: ${state.mongoGigrometrLastUpdate}`});
+    }
+
+    const renderPage = () => {
+        renderFitolampCheckbox();
+        renderLastTime();
+        renderGigrometrData();
+    }
+
+    // helpers
+    const getNowDate = (utc) => {
+        const now = utc ? new Date(utc) : new Date();
+        const year = now.getFullYear().toString();
+        const rawMonth = (now.getMonth() + 1).toString();
+        const month = rawMonth.length === 1 ? `0${rawMonth}` : rawMonth;
+        const rawDate = now.getUTCDate().toString();
+        const date = rawDate.length === 1 ? `0${rawDate}` : rawDate;
+        const rawHours = now.getHours().toString();
+        const hours = rawHours.length === 1 ? `0${rawHours}` : rawHours;
+        const rawMinutes = now.getMinutes().toString();
+        const minutes = rawMinutes.length === 1 ? `0${rawMinutes}` : rawMinutes;
+        const rawSeconds = now.getSeconds().toString();
+        const seconds = rawSeconds.length === 1 ? `0${rawSeconds}` : rawSeconds;
+
+        return `${year}-${month}-${date} ${hours}:${minutes}:${seconds}`;
+    }
+
+    // API
+    const changeFitolampStatus = () => {
+        const newValue = !state.fitolampCheck;
+        fetch('/common/publish', {
+            method: 'POST',
+            headers: {
+                "Content-Type": "application/json",
+            },  
+            body: JSON.stringify({ topic: 'fitolamp', message: newValue ? '1': '0', pin: 2 }),
+        }).then(response => {
+            if (response.ok) {
+                state.fitolampCheck = newValue;
+                return response.json();
+            }else {
+                renderError();
+            }
+        })
+    }
+
+    const startPopm = () => {
+        fetch('/common/publish', {
+            method: 'POST',
+            headers: {
+                "Content-Type": "application/json",
+            },  
+            body: JSON.stringify({ topic: 'pomp', message: '1', pin: 7 }),
+        }).then(response => {
+            if (response.ok) {
+                state.pompMangoButtonLastWatering = getNowDate();
+                return response.json();
+            }else{
+                renderError();
+            }
+        })
+    }
+    const getLightStatus = () => { // TODO API
+        fetch('/common/lightStatus').then(response => {
+            if (response.ok) {
+                return response.json();
+            }else{
+                renderError();
+            }
+        }).then(data => {
+            if(!data) return;
+            const { lastLightTime, systemStartFrom, top10LightStart } = data;
+            state.lastLightTime = getNowDate(lastLightTime);
+            state.systemStartFrom = getNowDate(systemStartFrom);
+            state.top10LightStart = top10LightStart.map(getNowDate).join();
+            state.lastUpdatingLight = getNowDate();
+            renderLastTime();
+        })
+    }
+
+    const getGigrometrStatus = () => { // TODO API
+        fetch('/common/gigrometrStatus').then(response => {
+            if (response.ok) {
+                return response.json();
+            }else{
+                renderError();
+            }
+        }).then(data => {
+            if(!data) return;
+            const { mongoGigrometrLastData, lastMongoGigrometrTime } = data;
+            state.mongoGigrometrLastData = mongoGigrometrLastData;
+            state.lastMongoGigrometrTime = getNowDate(lastMongoGigrometrTime);
+            state.mongoGigrometrLastUpdate = getNowDate();
+            renderGigrometrData();
+        })
+    }
+
+
+    //state
+    class State {
+        fitolampCheck = '{{checkedFitolamp}}' === '1' ? true : false;
+
+        set fitolampCheck(newValue) {
+            this.fitolampCheck = newValue;
+            renderFitolampCheckbox();
+        }
+
+        lastLightTime = getNowDate('{{lastLightTime}}');
+
+        set lastLightTime(newValue) {
+            this.lastLightTime = newValue;
+        }
+
+        pompMangoButtonLastWatering = getNowDate('{{pompMangoButtonLastWatering}}');
+
+        set pompMangoButtonLastWatering(newValue) {
+            this.pompMangoButtonLastWatering = newValue;
+        }
+
+        systemStartFrom = getNowDate('{{systemStartFrom}}');
+
+        set systemStartFrom(newValue) {
+            this.systemStartFrom = newValue;
+        }
+
+        top10LightStart = '{{top10LightStart}}'.split(',').map(el => `<div>${getNowDate(Number(el))}</div>`).join('');
+
+        set top10LightStart(newValue) {
+            this.top10LightStart = newValue;
+        }
+
+        lastUpdatingLight = getNowDate();
+
+        set lastUpdatingLight(newValue) {
+            this.lastUpdatingLight = newValue;
+        }
+
+        mongoGigrometrLastData = '{{mongoGigrometrLastData}}';
+
+        set mongoGigrometrLastData(newValue) {
+            this.mongoGigrometrLastData = newValue;
+        }
+
+        lastMongoGigrometrTime = getNowDate('{{lastMongoGigrometrTime}}');
+
+        set lastMongoGigrometrTime(newValue) {
+            this.lastMongoGigrometrTime = newValue;
+        }
+
+        mongoGigrometrLastUpdate = getNowDate();
+
+        set mongoGigrometrLastUpdate(newValue) {
+            this.mongoGigrometrLastUpdate = newValue;
+        }
+    }
+
+    const state = new State();
+
+    // init
+    renderPage();
+    setInterval(() => {
+        getLightStatus();
+        getGigrometrStatus();
+    }, 1000 * 60);
+</script>
+</html>

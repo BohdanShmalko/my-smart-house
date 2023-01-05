@@ -1,5 +1,5 @@
 const logger = require('../utils/logger');
-const LightModel = require('../repositories/lightModel');
+const repositories = require('./repositories');
 
 module.exports = async (message) => {
     const minutes = Number(message);
@@ -12,6 +12,6 @@ module.exports = async (message) => {
     logger.log(`The system is already wark ${hours} hour and ${minute} minute.`);
 
     //save to db
-    await LightModel.create({ value: minutes });
+    await repositories.createLightModel({ value: message });
     logger.log(`Topic: ligth. Value success saved.`);
 }
