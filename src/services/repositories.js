@@ -35,7 +35,7 @@ const getLightStatusData = async () => {
 }
 
 const getGigrometrStatusData = async () => {
-    const lastGigrometrDoc = await gigrometrModel.findOne({ pin: 5 }).sort({_id:-1});
+    const lastGigrometrDoc = await gigrometrModel.findOne().sort({_id:-1});
     if(!lastGigrometrDoc) return {};
     const mongoGigrometrLastData = lastGigrometrDoc.value;
     const lastMongoGigrometrTime = moment(lastGigrometrDoc.createdAt).utc();
