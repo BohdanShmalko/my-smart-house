@@ -50,7 +50,7 @@ const getFitolampLastStatus = async () => {
 }
 
 const getPompLastWatering = async () => {
-    const lastPompDoc = await pompModel.findOne({ pin: 1 }).sort({_id:-1});
+    const lastPompDoc = await pompModel.findOne({ pin: 7 }).sort({_id:-1});
     if(!lastPompDoc) return
     const pompMangoButtonLastWatering = moment(lastPompDoc.createdAt).utc();
 
