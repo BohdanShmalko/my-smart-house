@@ -23,10 +23,13 @@ const createGigrometrModel = async (createObject) => {
 
 const getLightStatusData = async () => {
     const lastLightTimeDoc = await lightModel.findOne().sort({_id:-1});
-    const lastLightTime = moment(lastLightTimeDoc.createdAt).utc();
+    const lastLightTime = moment(lastLightTimeDoc.createdAt).toDate().getTime();
 
-    const systemStartFromDoc = await lightModel.findOne({ value: '1' }).sort({_id:-1});
-    const systemStartFrom = moment(systemStartFromDoc.createdAt).utc();
+    //const systemStartFromDoc = await lightModel.findOne({ value: '1' }).sort({_id:-1});
+    const systemStartFrom = moment(lastLightTimeDoc.createdAt)
+        .subtract(Number(lastLightTimeDoc.value), 'minutes')
+        .toDate()
+        .getTime();
 
     const top10LightStartDoc = await lightModel.find({ value: '1' }).sort({_id:-1}).limit(10);
     const top10LightStart = top10LightStartDoc.map(el => moment(el.createdAt).toDate().getTime()).join();
