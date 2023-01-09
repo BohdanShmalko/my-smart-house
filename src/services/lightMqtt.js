@@ -1,9 +1,12 @@
 const logger = require('../utils/logger');
 const repositories = require('./repositories');
+const initMqtt = require('./initMqtt');
 
 module.exports = async (message) => {
     const minutes = Number(message);
     if(isNaN(minutes)) return logger.warn(`Topic: light. ${message} is not a number.`);
+
+    if(minutes === 1) await initMqtt();
 
     const hours = Math.floor(minutes / 60);
     const minuteRaw = (minutes - hours * 60).toString();
